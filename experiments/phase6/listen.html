@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phase 6 — multiple voices (listening)</title>
+<style>
+ body { font-family: -apple-system, sans-serif; max-width: 780px; margin: 2rem auto; }
+ h2 { border-bottom: 1px solid #ccc; padding-bottom: .2rem; margin-top: 2.5rem; }
+ h3 { margin-top: 1.6rem; color: #333; }
+ .ref { background: #f6f6f6; padding: .6rem; border-radius: 6px; margin: 1rem 0; }
+ .clip { margin: .8rem 0; }
+ .clip label { display: block; font-weight: 600; margin-bottom: .2rem; }
+ .promptnote, .catnote { color: #888; font-weight: 400; font-size: .85rem; }
+ .catnote::before { content: '['; } .catnote::after { content: ']'; }
+ audio { width: 100%; }
+</style>
+</head>
+<body>
+<h1>Phase 6 — multiple voices evaluation</h1>
+<p>Two new voices alongside Simone (DEVELOPMENT.md §13). For each voice,
+listen to the <b>reference</b> first (identity anchor), then every clip, and
+rate 1–5 on <b>Identity vs this voice's reference</b> (headline — does it
+sound like that speaker?), <b>Naturalness</b> and <b>Consistency</b>.
+Cross-voice question to answer after: do the three voices sound like
+different people? Simone's Phase 5 clips (same model, same sentences) are
+embedded at the bottom for direct comparison.</p>
+
+<h2>Voice B — Neufeld (male, US narrator)</h2>
+<div class="ref">Bob Neufeld reading <i>Dr. Jekyll and Mr. Hyde</i> (LibriVox, public domain). Reference recording (identity anchor):<audio controls preload="none" src="../../voices/neufeld/reference.wav"></audio></div>
+<h3>Normal conversation</h3>
+<div class="clip"><label>&ldquo;Thank you for calling.&rdquo; <span class="catnote">Normal conversation</span></label><audio controls preload="none" src="audio/trimmed/neufeld_conv1.wav"></audio></div>
+<div class="clip"><label>&ldquo;How can I help you today?&rdquo; <span class="catnote">Normal conversation</span></label><audio controls preload="none" src="audio/trimmed/neufeld_conv2.wav"></audio></div>
+<div class="clip"><label>&ldquo;Let me check that for you.&rdquo; <span class="catnote">Normal conversation</span></label><audio controls preload="none" src="audio/trimmed/neufeld_conv3.wav"></audio></div>
+<h3>Questions</h3>
+<div class="clip"><label>&ldquo;Could you please confirm your account number?&rdquo; <span class="catnote">Questions</span></label><audio controls preload="none" src="audio/trimmed/neufeld_q1.wav"></audio></div>
+<div class="clip"><label>&ldquo;Would you like me to explain that again?&rdquo; <span class="catnote">Questions</span></label><audio controls preload="none" src="audio/trimmed/neufeld_q2.wav"></audio></div>
+<h3>Emotional speech</h3>
+<div class="clip"><label>&ldquo;I'm really sorry about what happened.&rdquo; <span class="catnote">Emotional speech</span> <span class="promptnote">plain here (no tone tag; Phase 5 Simone version was tagged+trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_emo1.wav"></audio></div>
+<div class="clip"><label>&ldquo;That's fantastic news!&rdquo; <span class="catnote">Emotional speech</span> <span class="promptnote">plain here (no tone tag; Phase 5 Simone version was tagged+trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_emo2.wav"></audio></div>
+<div class="clip"><label>&ldquo;I'm afraid we have a problem.&rdquo; <span class="catnote">Emotional speech</span> <span class="promptnote">plain here (no tone tag; Phase 5 Simone version was tagged+trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_emo3.wav"></audio></div>
+<h3>Difficult text</h3>
+<div class="clip"><label>&ldquo;Your appointment is on March 3rd at 2:30 PM, in room 401B of the Beaumont Clinic.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/neufeld_diff1.wav"></audio></div>
+<div class="clip"><label>&ldquo;The total comes to $1,247.50, including the $19.99 monthly service fee.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/neufeld_diff2.wav"></audio></div>
+<div class="clip"><label>&ldquo;The API returned a 503 error, so the VPN tunnel to the NAS dropped during the HTTP upload.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/neufeld_diff3.wav"></audio></div>
+<div class="clip"><label>&ldquo;Mrs. O'Neill from 42 Hackney Blvd, Apt 7A, called about her Wi-Fi router, a Corvex XR-500.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/neufeld_diff4.wav"></audio></div>
+<div class="clip"><label>&ldquo;Call 555-0142 between 9 AM and 5 PM EST and ask for Dr. Vásquez about the Q3 report.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/neufeld_diff5.wav"></audio></div>
+<h3>Long sentences</h3>
+<div class="clip"><label>&ldquo;Before we can process the refund, I'll need to verify a few details on your account, so please bear with me for just a moment. Once everything checks out, the money should appear on your card within three to five business days.&rdquo; <span class="catnote">Long sentences</span></label><audio controls preload="none" src="audio/trimmed/neufeld_long1.wav"></audio></div>
+<div class="clip"><label>&ldquo;Thank you for your patience while I looked into this for you. I can see that the payment left your account on the twelfth, but our system never received the confirmation from the bank. I'll raise this with our payments team right now, and someone will call you back before the end of the day. In the meantime, please keep your reference number handy in case you need to contact us again.&rdquo; <span class="catnote">Long sentences</span></label><audio controls preload="none" src="audio/trimmed/neufeld_long2.wav"></audio></div>
+<h2>Voice C — Golding (female, British narrator)</h2>
+<div class="ref">Ruth Golding reading <i>The Adventures of Sherlock Holmes</i> (LibriVox, public domain). Reference recording (identity anchor):<audio controls preload="none" src="../../voices/golding/reference.wav"></audio></div>
+<h3>Normal conversation</h3>
+<div class="clip"><label>&ldquo;Thank you for calling.&rdquo; <span class="catnote">Normal conversation</span></label><audio controls preload="none" src="audio/trimmed/golding_conv1.wav"></audio></div>
+<div class="clip"><label>&ldquo;How can I help you today?&rdquo; <span class="catnote">Normal conversation</span></label><audio controls preload="none" src="audio/trimmed/golding_conv2.wav"></audio></div>
+<div class="clip"><label>&ldquo;Let me check that for you.&rdquo; <span class="catnote">Normal conversation</span></label><audio controls preload="none" src="audio/trimmed/golding_conv3.wav"></audio></div>
+<h3>Questions</h3>
+<div class="clip"><label>&ldquo;Could you please confirm your account number?&rdquo; <span class="catnote">Questions</span></label><audio controls preload="none" src="audio/trimmed/golding_q1.wav"></audio></div>
+<div class="clip"><label>&ldquo;Would you like me to explain that again?&rdquo; <span class="catnote">Questions</span></label><audio controls preload="none" src="audio/trimmed/golding_q2.wav"></audio></div>
+<h3>Emotional speech</h3>
+<div class="clip"><label>&ldquo;I'm really sorry about what happened.&rdquo; <span class="catnote">Emotional speech</span> <span class="promptnote">plain here (no tone tag; Phase 5 Simone version was tagged+trimmed)</span></label><audio controls preload="none" src="audio/trimmed/golding_emo1.wav"></audio></div>
+<div class="clip"><label>&ldquo;That's fantastic news!&rdquo; <span class="catnote">Emotional speech</span> <span class="promptnote">plain here (no tone tag; Phase 5 Simone version was tagged+trimmed)</span></label><audio controls preload="none" src="audio/trimmed/golding_emo2.wav"></audio></div>
+<div class="clip"><label>&ldquo;I'm afraid we have a problem.&rdquo; <span class="catnote">Emotional speech</span> <span class="promptnote">plain here (no tone tag; Phase 5 Simone version was tagged+trimmed)</span></label><audio controls preload="none" src="audio/trimmed/golding_emo3.wav"></audio></div>
+<h3>Difficult text</h3>
+<div class="clip"><label>&ldquo;Your appointment is on March 3rd at 2:30 PM, in room 401B of the Beaumont Clinic.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/golding_diff1.wav"></audio></div>
+<div class="clip"><label>&ldquo;The total comes to $1,247.50, including the $19.99 monthly service fee.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/golding_diff2.wav"></audio></div>
+<div class="clip"><label>&ldquo;The API returned a 503 error, so the VPN tunnel to the NAS dropped during the HTTP upload.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/golding_diff3.wav"></audio></div>
+<div class="clip"><label>&ldquo;Mrs. O'Neill from 42 Hackney Blvd, Apt 7A, called about her Wi-Fi router, a Corvex XR-500.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/golding_diff4.wav"></audio></div>
+<div class="clip"><label>&ldquo;Call 555-0142 between 9 AM and 5 PM EST and ask for Dr. Vásquez about the Q3 report.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="audio/trimmed/golding_diff5.wav"></audio></div>
+<h3>Long sentences</h3>
+<div class="clip"><label>&ldquo;Before we can process the refund, I'll need to verify a few details on your account, so please bear with me for just a moment. Once everything checks out, the money should appear on your card within three to five business days.&rdquo; <span class="catnote">Long sentences</span></label><audio controls preload="none" src="audio/trimmed/golding_long1.wav"></audio></div>
+<div class="clip"><label>&ldquo;Thank you for your patience while I looked into this for you. I can see that the payment left your account on the twelfth, but our system never received the confirmation from the bank. I'll raise this with our payments team right now, and someone will call you back before the end of the day. In the meantime, please keep your reference number handy in case you need to contact us again.&rdquo; <span class="catnote">Long sentences</span></label><audio controls preload="none" src="audio/trimmed/golding_long2.wav"></audio></div>
+<h2>Tone sanity check — Voice B (Neufeld)</h2><p>For each sentence, listen to the <b>baseline</b> first (no tone direction), then each tone, and rate the tone <b>against the baseline</b> (1–5, §18): does it still sound like the <b>same person</b> (Identity), is it natural (Naturalness), does the tone come through (Expression), and is it Consistent? Tags are leak-trimmed with the Phase 3 whisper-timestamp method.</p>
+<h3>S1 — &ldquo;Thank you for calling. How may I help you today?&rdquo;</h3>
+<div class="clip"><label>baseline</label><audio controls preload="none" src="audio/trimmed/neufeld_tone_base_s1.wav"></audio></div>
+<div class="clip"><label>[calm] <span class="promptnote">(tagged, trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_tone_tag_calm_s1_trim.wav"></audio></div>
+<div class="clip"><label>[happy] <span class="promptnote">(tagged, trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_tone_tag_happy_s1_trim.wav"></audio></div>
+<div class="clip"><label>[sad] <span class="promptnote">(tagged, trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_tone_tag_sad_s1_trim.wav"></audio></div>
+<h3>S2 — &ldquo;Well, that certainly went according to plan.&rdquo;</h3>
+<div class="clip"><label>baseline</label><audio controls preload="none" src="audio/trimmed/neufeld_tone_base_s2.wav"></audio></div>
+<div class="clip"><label>[calm] <span class="promptnote">(tagged, trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_tone_tag_calm_s2_trim.wav"></audio></div>
+<div class="clip"><label>[happy] <span class="promptnote">(tagged, trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_tone_tag_happy_s2_trim.wav"></audio></div>
+<div class="clip"><label>[sad] <span class="promptnote">(tagged, trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_tone_tag_sad_s2_trim.wav"></audio></div>
+<h3>S3 — &ldquo;I need you to listen to me.&rdquo;</h3>
+<div class="clip"><label>baseline</label><audio controls preload="none" src="audio/trimmed/neufeld_tone_base_s3.wav"></audio></div>
+<div class="clip"><label>[calm] <span class="promptnote">(tagged, trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_tone_tag_calm_s3_trim.wav"></audio></div>
+<div class="clip"><label>[happy] <span class="promptnote">(tagged, trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_tone_tag_happy_s3_trim.wav"></audio></div>
+<div class="clip"><label>[sad] <span class="promptnote">(tagged, trimmed)</span></label><audio controls preload="none" src="audio/trimmed/neufeld_tone_tag_sad_s3_trim.wav"></audio></div>
+<h2>Simone — Phase 5 reference set (for direct comparison)</h2><p><a href="../naturalness/listen.html">Open the Phase 5 listening page</a>. Same model, same 15 sentences. In Phase 5 the three emotional lines were tagged+trimmed (<code>emo1_trim/emo2_trim/emo3_trim</code>); in Phase 6 they are plain. Compare the new voices against these on the 12 plain clips.</p>
+<h3>Normal conversation</h3>
+<div class="clip"><label>&ldquo;Thank you for calling.&rdquo; <span class="catnote">Normal conversation</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/conv1.wav"></audio></div>
+<div class="clip"><label>&ldquo;How can I help you today?&rdquo; <span class="catnote">Normal conversation</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/conv2.wav"></audio></div>
+<div class="clip"><label>&ldquo;Let me check that for you.&rdquo; <span class="catnote">Normal conversation</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/conv3.wav"></audio></div>
+<h3>Questions</h3>
+<div class="clip"><label>&ldquo;Could you please confirm your account number?&rdquo; <span class="catnote">Questions</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/q1.wav"></audio></div>
+<div class="clip"><label>&ldquo;Would you like me to explain that again?&rdquo; <span class="catnote">Questions</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/q2.wav"></audio></div>
+<h3>Emotional speech</h3>
+<div class="clip"><label>&ldquo;I'm really sorry about what happened.&rdquo; <span class="catnote">Emotional speech</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/emo1_trim.wav"></audio></div>
+<div class="clip"><label>&ldquo;That's fantastic news!&rdquo; <span class="catnote">Emotional speech</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/emo2_trim.wav"></audio></div>
+<div class="clip"><label>&ldquo;I'm afraid we have a problem.&rdquo; <span class="catnote">Emotional speech</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/emo3_trim.wav"></audio></div>
+<h3>Difficult text</h3>
+<div class="clip"><label>&ldquo;Your appointment is on March 3rd at 2:30 PM, in room 401B of the Beaumont Clinic.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/diff1.wav"></audio></div>
+<div class="clip"><label>&ldquo;The total comes to $1,247.50, including the $19.99 monthly service fee.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/diff2.wav"></audio></div>
+<div class="clip"><label>&ldquo;The API returned a 503 error, so the VPN tunnel to the NAS dropped during the HTTP upload.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/diff3.wav"></audio></div>
+<div class="clip"><label>&ldquo;Mrs. O'Neill from 42 Hackney Blvd, Apt 7A, called about her Wi-Fi router, a Corvex XR-500.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/diff4.wav"></audio></div>
+<div class="clip"><label>&ldquo;Call 555-0142 between 9 AM and 5 PM EST and ask for Dr. Vásquez about the Q3 report.&rdquo; <span class="catnote">Difficult text</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/diff5.wav"></audio></div>
+<h3>Long sentences</h3>
+<div class="clip"><label>&ldquo;Before we can process the refund, I'll need to verify a few details on your account, so please bear with me for just a moment. Once everything checks out, the money should appear on your card within three to five business days.&rdquo; <span class="catnote">Long sentences</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/long1.wav"></audio></div>
+<div class="clip"><label>&ldquo;Thank you for your patience while I looked into this for you. I can see that the payment left your account on the twelfth, but our system never received the confirmation from the bank. I'll raise this with our payments team right now, and someone will call you back before the end of the day. In the meantime, please keep your reference number handy in case you need to contact us again.&rdquo; <span class="catnote">Long sentences</span></label><audio controls preload="none" src="../naturalness/audio/trimmed/long2.wav"></audio></div>
+</body>
+</html>

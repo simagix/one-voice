@@ -15,3 +15,9 @@ development.log
 
 # Model caches
 models/
+
+# Phase 6 source recordings (archive.org; kept local-only by decision)
+jekyll_neufeld_part1.mp3
+sherlock_golding_part1.mp3
+neufeld.wav
+golding.wav
