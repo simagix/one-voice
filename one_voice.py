@@ -406,6 +406,19 @@ def _generate_line(
     return entry
 
 
+def _parse_only(spec: str | None) -> list[int] | None:
+    """Parse --only INDEX(,INDEX) into a sorted list of unique line indexes."""
+    if spec is None:
+        return None
+    try:
+        only = sorted({int(tok) for tok in spec.split(",") if tok.strip()})
+    except ValueError:
+        _fail(f"--only expects a comma-separated list of integers, got: {spec!r}")
+    if not only:
+        _fail("--only: no line indexes given")
+    return only
+
+
 def cmd_script(args: argparse.Namespace) -> None:
     """Generate each line of a script file independently (Phase 8, §15)."""
     script_path = Path(args.file)
@@ -414,8 +427,11 @@ def cmd_script(args: argparse.Namespace) -> None:
     lines = parse_script(script_path.read_text(encoding="utf-8"))
     if not lines:
         _fail(f"no [voice] blocks found in {script_path}")
+    only = _parse_only(args.only)
     if args.dry_run:
         print("dry run — no audio will be generated")
+        if only:
+            print(f"--only: would regenerate line(s) {', '.join(str(i) for i in only)}")
         _print_plan(lines)
         return
 
@@ -424,10 +440,46 @@ def cmd_script(args: argparse.Namespace) -> None:
     final_dir = output_dir / "final"
     raw_dir.mkdir(parents=True, exist_ok=True)
     final_dir.mkdir(parents=True, exist_ok=True)
-    print(f"generating {len(lines)} line(s) -> {output_dir}", flush=True)
+
+    # Phase 9 selective regeneration (§16): --only regenerates the listed
+    # manifest lines from this script and updates manifest.json in place;
+    # every other entry — and its audio — is kept untouched.
+    existing: dict[int, dict] = {}
+    if only:
+        manifest_path = output_dir / "manifest.json"
+        if not manifest_path.exists():
+            _fail(
+                f"--only requires an existing manifest: {manifest_path} "
+                "(run a full script generation first)"
+            )
+        try:
+            prior = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            _fail(f"cannot parse {manifest_path}: {exc}")
+        existing = {e["index"]: e for e in prior.get("lines", [])}
+        missing = [i for i in only if i not in existing]
+        if missing:
+            avail = ", ".join(str(i) for i in sorted(existing)) or "(none)"
+            _fail(
+                f"--only: no manifest line(s) with index "
+                f"{', '.join(str(i) for i in missing)} (available: {avail})"
+            )
+        added = [ln.index for ln in lines if ln.index not in existing]
+        if added:
+            _fail(
+                f"--only: script line(s) {', '.join(str(i) for i in added)} are "
+                "not in the manifest; regenerate the full script first"
+            )
+        print(f"regenerating {len(only)} line(s) -> {output_dir}", flush=True)
+    else:
+        print(f"generating {len(lines)} line(s) -> {output_dir}", flush=True)
 
     entries = []
     for line in lines:
+        if only and line.index not in only:
+            entries.append(existing[line.index])
+            print(f"[{line.index}/{len(lines)}] [keep] {line.stem}", flush=True)
+            continue
         ref_audio = _profile_reference(line.voice)
         ref_text = _resolve_ref_text(ref_audio, None)
         print(
@@ -449,6 +501,260 @@ def cmd_script(args: argparse.Namespace) -> None:
             f"warning: {len(low)} line(s) with transcript_match < 0.90: {names}",
             file=sys.stderr,
         )
+
+
+# --------------------------------------------------------------------------
+# Phase 9 — audio assembly (DEVELOPMENT.md §16)
+# --------------------------------------------------------------------------
+
+# Basic per-segment level matching ("basic volume normalization", §16): gain
+# each clip's RMS to a shared target. Gains are clamped so a near-silent clip
+# is not boosted into noise and a very loud one is not crushed — deliberately
+# "basic", not loudness-war engineering.
+TARGET_RMS = 0.08
+MAX_GAIN = 8.0  # clamp headroom: Phase 8 clips measure RMS ~0.014–0.026, peak ≤ 0.21
+DEFAULT_PAUSE_MS = 350
+DEFAULT_SPEAKER_PAUSE_MS = 600
+
+
+def _read_wav_mono16(path: Path):
+    """Read a mono 16-bit WAV as (sample_rate, int16 numpy array)."""
+    import numpy as np  # lazy: only the assembly path needs it
+
+    with wave.open(str(path)) as w:
+        sample_rate = w.getframerate()
+        nch = w.getnchannels()
+        sw = w.getsampwidth()
+        frames = w.readframes(w.getnframes())
+    if nch != 1 or sw != 2:
+        _fail(f"{path}: expected mono 16-bit WAV, got {nch} ch / {sw * 8}-bit")
+    return sample_rate, np.frombuffer(frames, dtype=np.int16)
+
+
+def _write_wav_mono16(path: Path, sample_rate: int, samples) -> None:
+    """Write mono 16-bit PCM WAV (the Phase 8 clip format)."""
+    import numpy as np
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sample_rate)
+        w.writeframes(np.ascontiguousarray(samples, dtype=np.int16).tobytes())
+
+
+def _rms(samples) -> float:
+    """RMS of an int16 waveform, normalized to digital full scale (~1.0)."""
+    import numpy as np
+
+    if samples.size == 0:
+        return 0.0
+    return float(np.sqrt(np.mean(samples.astype(np.float64) ** 2)) / 32768.0)
+
+
+def _level_gain(samples, target_rms: float) -> float:
+    """Gain that brings a segment to the shared RMS target, clamped."""
+    import numpy as np
+
+    rms = _rms(samples)
+    if rms <= 0.0:
+        return 1.0
+    return float(np.clip(target_rms / rms, 1.0 / MAX_GAIN, MAX_GAIN))
+
+
+def _apply_gain(samples, gain: float):
+    """Apply a gain to int16 samples, clipping to the int16 range."""
+    import numpy as np
+
+    return np.clip(samples.astype(np.float64) * gain, -32768, 32767).astype(np.int16)
+
+
+def _print_timeline(timeline: list[dict], speaker_changes: int, source: str) -> None:
+    print(f"assembly timeline ({len(timeline)} segment(s), source={source}):")
+    for seg in timeline:
+        print(
+            f"  line{seg['index']:02d} {seg['voice'] or '?':<8} "
+            f"[{seg['tone'] or 'plain'}] silence {seg['gap_before_s']:5.2f}s | "
+            f"{seg['duration_s']:5.2f}s gain {seg['gain']:.2f}x "
+            f"@ {seg['start_s']:6.2f}s  {Path(seg['file']).name}"
+        )
+    print(f"speaker changes: {speaker_changes}")
+
+
+def _parse_pause_after(spec: str | None, known_indexes: list) -> dict[int, int]:
+    """Parse --pause-after INDEX=MS(,INDEX=MS) into {line_index: pause_ms}.
+
+    Each pair replaces the default gap (pause-ms / speaker-pause-ms) that
+    follows the given manifest line index — for per-gap micro-adjustments
+    such as a longer beat on a multi-agent handoff.
+    """
+    if not spec:
+        return {}
+    overrides: dict[int, int] = {}
+    for tok in spec.split(","):
+        tok = tok.strip()
+        if not tok:
+            continue
+        idx, sep, ms = tok.partition("=")
+        try:
+            index, pause = int(idx.strip()), int(ms.strip())
+        except ValueError:
+            _fail(f"--pause-after expects INDEX=MS pairs, got: {tok!r}")
+        if pause < 0:
+            _fail(f"--pause-after values must be >= 0 ms, got: {pause}")
+        if index not in known_indexes:
+            avail = ", ".join(str(i) for i in known_indexes) or "(none)"
+            _fail(f"--pause-after: line index {index} is not in the manifest (available: {avail})")
+        overrides[index] = pause
+    return overrides
+
+
+def cmd_assemble(args: argparse.Namespace) -> None:
+    """Combine a Phase 8 output dir's segments into ONE WAV (Phase 9, §16).
+
+    Reads the manifest's per-line clips (final/ by default), matches levels
+    with a basic per-segment RMS gain, inserts configurable silences (a longer
+    gap on speaker change) and writes a single mono 16-bit WAV plus a small
+    assembly report. Never touches raw/, final/ or manifest.json.
+    """
+    import numpy as np
+
+    if args.pause_ms < 0 or args.speaker_pause_ms < 0:
+        _fail("pause values must be >= 0 ms")
+    if not args.no_normalize and args.target_rms <= 0.0:
+        _fail("--target-rms must be > 0")
+
+    manifest_path = Path(args.manifest).resolve()
+    if not manifest_path.exists():
+        _fail(f"manifest not found: {manifest_path}")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        _fail(f"cannot parse {manifest_path}: {exc}")
+    entries = manifest.get("lines") or []
+    if not entries:
+        _fail(f"{manifest_path}: manifest has no lines")
+
+    output = Path(args.output).resolve()
+    if output.suffix.lower() != ".wav":
+        _fail(f"output must be a .wav file, got: {output}")
+
+    # Load every segment up front: the timeline needs durations and gains even
+    # for --dry-run, and format errors must fail before anything is written.
+    loaded = []
+    sample_rate = None
+    for entry in entries:
+        rel = entry.get(args.source)
+        if not rel:
+            _fail(
+                f"line {entry.get('index')}: manifest entry has no "
+                f"{args.source!r} clip path"
+            )
+        path = Path(rel)
+        if not path.exists():
+            _fail(f"line {entry.get('index')}: missing {args.source} clip: {path}")
+        sr, samples = _read_wav_mono16(path)
+        if sample_rate is None:
+            sample_rate = sr
+        elif sr != sample_rate:
+            _fail(f"{path}: sample rate {sr} Hz != {sample_rate} Hz of earlier segments")
+        gain = 1.0 if args.no_normalize else _level_gain(samples, args.target_rms)
+        loaded.append((entry, path, samples, gain))
+
+    # Pause model: --pause-ms between consecutive lines, --speaker-pause-ms
+    # when the voice profile changes (silence between speakers, §16).
+    # --pause-after INDEX=MS replaces the default gap after specific lines.
+    pause_overrides = _parse_pause_after(
+        args.pause_after, [e.get("index") for e in entries]
+    )
+    last_index = entries[-1].get("index")
+    if last_index in pause_overrides:
+        print(
+            f"note: --pause-after {last_index} has no effect "
+            "(no gap after the last line)",
+            file=sys.stderr,
+        )
+    gap_frames = [0]  # silence before each segment; none before the first
+    for pos in range(1, len(loaded)):
+        after_index = loaded[pos - 1][0].get("index")
+        if after_index in pause_overrides:
+            ms = pause_overrides[after_index]
+        else:
+            changed = loaded[pos][0].get("voice") != loaded[pos - 1][0].get("voice")
+            ms = args.speaker_pause_ms if changed else args.pause_ms
+        gap_frames.append(round(ms * sample_rate / 1000))
+    total_frames = sum(len(s) for _, _, s, _ in loaded) + sum(gap_frames)
+    assembled = np.zeros(total_frames, dtype=np.int16)
+
+    cursor = 0
+    speaker_changes = 0
+    timeline = []
+    for pos, (entry, path, samples, gain) in enumerate(loaded):
+        if pos > 0:
+            changed = entry.get("voice") != loaded[pos - 1][0].get("voice")
+            speaker_changes += int(changed)
+            cursor += gap_frames[pos]  # zeros: the silence
+        out_samples = samples if gain == 1.0 else _apply_gain(samples, gain)
+        assembled[cursor : cursor + len(samples)] = out_samples
+        cursor += len(samples)
+        timeline.append(
+            {
+                "index": entry.get("index"),
+                "voice": entry.get("voice"),
+                "tone": entry.get("tone"),
+                "file": str(path),
+                "gap_before_s": round(gap_frames[pos] / sample_rate, 3),
+                "start_s": round((cursor - len(samples)) / sample_rate, 3),
+                "duration_s": round(len(samples) / sample_rate, 3),
+                "gain": round(gain, 3),
+            }
+        )
+
+    speech_s = round(sum(t["duration_s"] for t in timeline), 3)
+    total_s = round(cursor / sample_rate, 3)
+    silence_s = round(total_s - speech_s, 3)
+    _print_timeline(timeline, speaker_changes, args.source)
+    print(f"total: {speech_s:.2f}s speech + {silence_s:.2f}s silence = {total_s:.2f}s")
+    if args.dry_run:
+        print("dry run — no audio written")
+        return
+
+
+    _write_wav_mono16(output, sample_rate, assembled)
+    print(f"wrote {output}")
+
+    # Gate: the written file must equal Σ segments + Σ silences exactly.
+    with wave.open(str(output)) as w:
+        written_frames = w.getnframes()
+        written_s = written_frames / w.getframerate()
+    check = "PASS" if written_frames == cursor else "FAIL"
+    print(
+        f"duration arithmetic: written {written_s:.2f}s "
+        f"vs expected {total_s:.2f}s — {check}"
+    )
+    if check != "PASS":
+        _fail("assembled duration does not match the timeline")
+
+    report = {
+        "manifest": str(manifest_path),
+        "script": manifest.get("script"),
+        "source": args.source,
+        "output": str(output),
+        "pause_ms": args.pause_ms,
+        "speaker_pause_ms": args.speaker_pause_ms,
+        "pause_overrides_ms": {str(i): ms for i, ms in pause_overrides.items()},
+        "normalize": not args.no_normalize,
+        "target_rms": args.target_rms,
+        "sample_rate": sample_rate,
+        "speaker_changes": speaker_changes,
+        "segments": timeline,
+        "speech_s": speech_s,
+        "silence_s": silence_s,
+        "total_duration_s": total_s,
+    }
+    report_path = output.with_suffix(".report.json")
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {report_path}")
 
 
 def cmd_voices(args: argparse.Namespace) -> None:
@@ -534,9 +840,69 @@ def build_parser() -> argparse.ArgumentParser:
         help="parse and print the plan without generating audio",
     )
     p_script.add_argument(
+        "--only",
+        metavar="INDEX[,INDEX]",
+        default=None,
+        help="regenerate only these manifest line indexes, updating "
+        "manifest.json in place (requires an existing manifest.json; Phase 9)",
+    )
+    p_script.add_argument(
         "--model", default=DEFAULT_MODEL, help=f"model repo (default: {DEFAULT_MODEL})"
     )
     p_script.set_defaults(func=cmd_script)
+
+    p_asm = sub.add_parser(
+        "assemble",
+        help="combine a script output dir's segments into one WAV (Phase 9)",
+    )
+    p_asm.add_argument(
+        "--manifest",
+        required=True,
+        help="Phase 8 manifest.json path (the segment source of truth)",
+    )
+    p_asm.add_argument("--output", required=True, help="assembled output WAV path")
+    p_asm.add_argument(
+        "--source",
+        choices=["final", "raw"],
+        default="final",
+        help="which per-line clips to assemble (default: final)",
+    )
+    p_asm.add_argument(
+        "--pause-ms",
+        type=int,
+        default=DEFAULT_PAUSE_MS,
+        help=f"silence between consecutive lines (default: {DEFAULT_PAUSE_MS})",
+    )
+    p_asm.add_argument(
+        "--speaker-pause-ms",
+        type=int,
+        default=DEFAULT_SPEAKER_PAUSE_MS,
+        help=f"longer silence on a voice change (default: {DEFAULT_SPEAKER_PAUSE_MS})",
+    )
+    p_asm.add_argument(
+        "--pause-after",
+        metavar="INDEX=MS[,INDEX=MS]",
+        default=None,
+        help="replace the default gap after these manifest line indexes "
+        "(e.g. --pause-after 4=800 for a longer agent-handoff beat)",
+    )
+    p_asm.add_argument(
+        "--target-rms",
+        type=float,
+        default=TARGET_RMS,
+        help=f"per-segment RMS target for level matching (default: {TARGET_RMS})",
+    )
+    p_asm.add_argument(
+        "--no-normalize",
+        action="store_true",
+        help="skip per-segment level matching",
+    )
+    p_asm.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the timeline (durations, silences, gains) without writing",
+    )
+    p_asm.set_defaults(func=cmd_assemble)
 
     return parser
 

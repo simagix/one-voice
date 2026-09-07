@@ -1,0 +1,44 @@
+# examples/dialogue.txt — Phase 9 multi-voice assembly demo (DEVELOPMENT.md §16)
+#
+# A short three-voice support call: simone (agent), neufeld (customer),
+# golding (supervisor). Generate the per-line clips:
+#
+#   .venv/bin/python one_voice.py script \
+#       --file examples/dialogue.txt --output-dir output/dialogue_demo
+#
+# then assemble them into one WAV (longer silence when the speaker changes):
+#
+#   .venv/bin/python one_voice.py assemble \
+#       --manifest output/dialogue_demo/manifest.json \
+#       --output output/dialogue_demo/assembled.wav
+#
+# If one line sounds wrong, regenerate just that line and re-assemble:
+#
+#   .venv/bin/python one_voice.py script \
+#       --file examples/dialogue.txt --output-dir output/dialogue_demo --only 2
+#
+# By-ear notes (Phase 9 listening pass): the four customer<->agent gaps feel
+# right at the default 600 ms speaker-change pause, but the multi-agent
+# handoffs (lines 4->5 and 5->6) want a longer beat — hence:
+#
+#   .venv/bin/python one_voice.py assemble \
+#       --manifest output/dialogue_demo/manifest.json \
+#       --output output/dialogue_demo/assembled.wav --pause-after 4=800,5=800
+
+[simone | friendly]
+Thank you for calling Northwind support. My name is Simone. How may I help you today?
+
+[neufeld | calm]
+Hi, yes, my internet has been down since this morning and I am getting quite frustrated.
+
+[simone | professional]
+I am sorry to hear that. Let me look into that for you right away.
+
+[neufeld | calm]
+Thank you. I have already tried restarting the router twice.
+
+[golding | reassuring]
+I'll make sure we get this resolved. I am escalating this to our senior team now.
+
+[simone | friendly]
+You will hear from us within the hour. Thank you for your patience.

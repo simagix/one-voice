@@ -56,12 +56,40 @@ python -m venv .venv
 .venv/bin/python one_voice.py script \
     --file examples/callcenter.txt --output-dir output/script_callcenter
 
+# Selective regeneration (Phase 9): regenerate ONLY line(s) 2 from the script,
+# updating manifest.json in place — all other clips are kept untouched.
+.venv/bin/python one_voice.py script \
+    --file examples/callcenter.txt --output-dir output/script_callcenter --only 2
+
+# Audio assembly (Phase 9): combine a script output dir's final/ segments into
+# ONE mono 24 kHz 16-bit WAV. Configurable pauses (a longer gap on speaker
+# change) and basic per-segment RMS level matching; --dry-run prints the
+# timeline. Segments and manifest are never modified; a small
+# <output>.report.json records the timeline and gains applied.
+.venv/bin/python one_voice.py assemble \
+    --manifest output/script_callcenter/manifest.json \
+    --output output/script_callcenter/assembled.wav --dry-run
+.venv/bin/python one_voice.py assemble \
+    --manifest output/script_callcenter/manifest.json \
+    --output output/script_callcenter/assembled.wav
+
+# A multi-voice demo (three voices in one dialogue):
+.venv/bin/python one_voice.py script \
+    --file examples/dialogue.txt --output-dir output/dialogue_demo
+.venv/bin/python one_voice.py assemble \
+    --manifest output/dialogue_demo/manifest.json \
+    --output output/dialogue_demo/assembled.wav
+
 .venv/bin/python one_voice.py --version
 .venv/bin/python one_voice.py --help
 ```
 
-Both `generate`/`clone` and `script` accept `--model` to override the default
-model (`mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit`).
+Both `generate`/`clone`, `script` and `assemble` accept `--model` to override
+the default model (`mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit`).
+`assemble` also takes `--pause-ms` (default 350), `--speaker-pause-ms`
+(default 600), `--pause-after INDEX=MS` (per-gap micro-adjustments, e.g.
+`--pause-after 4=800` for a longer agent-handoff beat), `--target-rms`
+(default 0.08), `--no-normalize` and `--source raw|final` (default final).
 
 ### Script format
 
@@ -83,9 +111,10 @@ helpers can be used as an embedded module from other Python code.
 ## Repository layout
 
 ```text
-one_voice.py            CLI entry point (generate / clone / script / voices / --version);
-                        import-safe for embedded use (parse_script, voice-profile helpers)
-examples/               example scripts for the `script` subcommand
+one_voice.py            CLI entry point (generate / clone / script / assemble / voices /
+                        --version); import-safe for embedded use (parse_script, voice-profile helpers)
+examples/               example scripts for the `script` subcommand (callcenter,
+                        multi-voice dialogue demo)
 voices/<name>/          reference recordings + transcripts (reference.wav / reference.txt)
                         + optional voice.yaml profile (name / reference / description)
 experiments/            model and prompt experiments (see notes.md in each)
@@ -96,12 +125,16 @@ VERSION                 current version
 
 ## Status
 
-Phases 2–7 are complete and committed: voice cloning (`--reference`),
+Phases 2–8 are complete and committed: voice cloning (`--reference`),
 tone/expression control via prompt + whisper-timestamp trim, a repeatable
 naturalness evaluation set, a three-voice set (Simone + the public-domain
-LibriVox readers Neufeld and Golding), and named voice profiles
-(`--voice <name>` / `one_voice.py voices`). Phase 8 adds script support
+LibriVox readers Neufeld and Golding), named voice profiles
+(`--voice <name>` / `one_voice.py voices`), and script support
 (`one_voice.py script`): per-line independent generation with optional tones,
-raw/final preservation and a manifest. See DEVELOPMENT.md for what is
-deliberately **not** built yet (audio assembly is Phase 9); `development.log`
-records what was done and why.
+raw/final preservation and a manifest. Phase 9 adds audio assembly
+(`one_voice.py assemble`): configurable pauses, a longer speaker-change gap,
+basic per-segment level matching and WAV output, with segments and manifest
+preserved and single-line regeneration via `script --only`. See
+DEVELOPMENT.md for what is deliberately **not** built yet (real-time
+call-center / speech-to-speech is Phase 10); `development.log` records what
+was done and why.
