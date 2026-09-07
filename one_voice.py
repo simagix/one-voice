@@ -116,21 +116,53 @@ def _profile_description(voice: str) -> str:
 # under-delivered). friendly/professional/reassuring are the §15 call-center
 # tones — same in-band pattern, gated in Phase 8 by the whisper transcription
 # check + by-ear sanity rather than pre-validated in Phase 3/4.
+#
+# Compatible with deck-to-video's tone vocabulary (narration.py TONES) so the
+# same [voice: NAME | tone: TAG] speaker notes work across both systems.
 TONES: dict[str, str] = {
+    # --- In-band tags (spoken aloud, leak-trimmed) ---
     "calm": "[calm]",
     "happy": "[happy]",
     "sad": "[sad]",
     "angry": "[angry]",
     "excited": "[excited]",
-    "sarcastic": "Deliver the sentence with dry, understated sarcasm.",
-    "friendly": "Speak in a warm, friendly, welcoming way.",
+    # --- Natural-language directions ---
+    "neutral": "Use a natural, conversational, balanced delivery.",
     "professional": "Speak in a clear, professional, composed way.",
+    "friendly": "Speak in a warm, friendly, welcoming way.",
+    "warm": "Speak in a warm, sincere, personable way.",
+    "cheerful": "Speak in a bright, cheerful, upbeat way, with positive energy.",
+    "enthusiastic": "Speak with high enthusiasm and engagement, while remaining natural.",
+    "confident": "Speak in a confident, assured, authoritative way.",
+    "serious": "Speak in a serious, deliberate, measured way, with appropriate weight.",
+    "concerned": "Speak in a concerned, thoughtful way, conveying genuine worry.",
+    "frustrated": "Speak with frustration and exasperation, with noticeable impatience.",
+    "disappointed": "Speak in a disappointed, slightly dejected way, but controlled.",
+    "surprised": "Speak with genuine surprise, with heightened energy and emphasis.",
+    "confused": "Speak in a confused, uncertain way, as though trying to understand.",
+    "curious": "Speak in a curious, engaged, inquisitive way.",
+    "skeptical": "Speak in a skeptical, doubtful way, with a questioning tone.",
+    "sarcastic": "Deliver the sentence with dry, understated sarcasm.",
+    "humorous": "Speak in a humorous, playful way, with a light-hearted tone.",
+    "witty": "Speak in a witty, clever way, with a sharp sense of humor.",
+    "dramatic": "Speak in a dramatic, intense way, with strong emotional delivery.",
+    "mysterious": "Speak in a mysterious, enigmatic way, with a conspiratorial whisper.",
+    "narrative": "Speak as if telling a story, with clear pacing and emphasis.",
+    "explainer": "Speak clearly and educationally, like a teacher explaining something.",
+    "whisper": "Speak softly and intimately, as if whispering to the listener.",
+    "robotic": "Speak in a mechanical, flat way, with artificial precision.",
+    "urgent": "Speak with urgency, as if racing against time.",
     "reassuring": "Speak in a calm, reassuring and confident way.",
 }
 
 
 class ScriptLine:
-    """One parsed script line: a [voice | tone] block plus its spoken text."""
+    """One parsed script line: a [voice | tone] block plus its spoken text.
+
+    Supports both bare (``[simone | friendly]``) and labeled
+    (``[voice: simone | tone: friendly]``) header formats so existing
+    deck-to-video speaker notes work unchanged.
+    """
 
     def __init__(self, index: int, voice: str, tone: str | None, text: str):
         self.index = index
@@ -157,16 +189,40 @@ class ScriptLine:
         return f"ScriptLine({self.index}, {self.voice!r}, {self.tone!r}, {self.text!r})"
 
 
+def _parse_labeled_header(inner: str) -> tuple[str | None, str | None]:
+    """Parse a labeled header: ``voice: NAME | tone: TAG``, ``voice: NAME``, or ``tone: TAG``.
+
+    Returns ``(voice, tone)`` where either may be None if not specified.
+    Used for deck-to-video compatibility (``[voice: simone | tone: friendly]``).
+    """
+    voice: str | None = None
+    tone: str | None = None
+
+    for part in inner.split("|"):
+        part = part.strip()
+        if part.lower().startswith("voice:"):
+            voice = part[6:].strip() or None
+        elif part.lower().startswith("tone:"):
+            tone = part[5:].strip() or None
+
+    return voice, tone
+
+
 def parse_script(source: str) -> list[ScriptLine]:
-    """Parse the §15 script format into ScriptLine objects.
+    """Parse the script format into ScriptLine objects.
+
+    Supports two header formats:
+
+    - **Bare** (one-voice style): ``[voice]`` or ``[voice | tone]``
+    - **Labeled** (deck-to-video style): ``[voice: NAME | tone: TAG]``,
+      ``[voice: NAME]``, or ``[tone: TAG]``
 
     Format: blank-line-separated blocks. The first line of a block is the
-    header `[voice]` or `[voice | tone]`; the remaining lines of the block
-    are spoken text, joined with single spaces onto ONE model input line
-    (mlx-audio splits its input on newlines — Phase 3/4 lesson). `#` comment
-    lines are ignored. Voice must be a known profile (see the 'voices'
-    command); tone must be in TONES. Malformed input fails with a precise
-    error naming the offending line.
+    header; the remaining lines of the block are spoken text, joined with
+    single spaces onto ONE model input line (mlx-audio splits its input on
+    newlines — Phase 3/4 lesson). `#` comment lines are ignored. Voice must
+    be a known profile (see the 'voices' command); tone must be in TONES.
+    Malformed input fails with a precise error naming the offending line.
     """
     lines: list[ScriptLine] = []
     voice: str | None = None
@@ -200,9 +256,25 @@ def parse_script(source: str) -> list[ScriptLine]:
                 _fail(f"line {lineno}: unterminated block header {stripped!r}")
             flush()
             inner = stripped[1:-1]
-            name, sep, tone_part = inner.partition("|")
-            voice = name.strip()
-            tone = tone_part.strip() if sep else None
+
+            # Detect format: labeled (deck-to-video) or bare (one-voice)
+            if "voice:" in inner or "tone:" in inner:
+                # Labeled format: [voice: NAME | tone: TAG], [voice: NAME], [tone: TAG]
+                new_voice, new_tone = _parse_labeled_header(inner)
+                if new_voice is not None:
+                    voice = new_voice
+                if new_tone is not None:
+                    tone = new_tone
+                if voice is None and tone is None:
+                    _fail(f"line {lineno}: neither voice nor tone specified in {stripped!r}")
+            else:
+                # Bare format: [voice | tone] or [voice]
+                name, sep, tone_part = inner.partition("|")
+                voice = name.strip()
+                tone = tone_part.strip() if sep else None
+                if sep and not tone:
+                    _fail(f"line {lineno}: empty tone in {stripped!r}")
+
             header_lineno = lineno
             if not voice:
                 _fail(f"line {lineno}: empty voice name in {stripped!r}")
@@ -211,8 +283,6 @@ def parse_script(source: str) -> list[ScriptLine]:
                 _fail(
                     f"line {lineno}: unknown voice profile {voice!r} (available: {avail})"
                 )
-            if sep and not tone:
-                _fail(f"line {lineno}: empty tone in {stripped!r}")
             if tone is not None and tone not in TONES:
                 _fail(
                     f"line {lineno}: unknown tone {tone!r} (available: {', '.join(TONES)})"

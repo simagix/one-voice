@@ -1,0 +1,11 @@
+# OneVoice dependencies
+# Apple Silicon macOS only — MLX requires Metal GPU
+
+# Core TTS engine (Qwen3-TTS via MLX)
+mlx-audio>=0.5.0
+
+# Whisper transcription (for pronunciation gate / transcript match)
+mlx-whisper>=0.4.0
+
+# Voice profile YAML parsing
+PyYAML>=6.0
