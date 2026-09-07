@@ -31,8 +31,15 @@ python -m venv .venv
     --text "Thank you for calling. How may I help you today?" \
     --output output/thanks.wav
 
-# Voice cloning from a reference recording
-# (transcript is read from voices/simone/reference.txt; override with --ref-text)
+# Voice cloning from a named profile (voices/<name>/voice.yaml — Phase 7)
+.venv/bin/python one_voice.py voices                # list available profiles
+.venv/bin/python one_voice.py clone \
+    --voice simone \
+    --text "Thank you for calling." \
+    --output output/simone.wav
+
+# ...or from an arbitrary reference WAV path (Phase 2 behaviour)
+# (transcript is read from <reference>.txt sidecar; override with --ref-text)
 .venv/bin/python one_voice.py clone \
     --reference voices/simone/reference.wav \
     --text "Thank you for calling." \
@@ -48,8 +55,9 @@ Both commands accept `--model` to override the default model
 ## Repository layout
 
 ```text
-one_voice.py            CLI entry point (generate / clone / --version)
+one_voice.py            CLI entry point (generate / clone / voices / --version)
 voices/<name>/          reference recordings + transcripts (reference.wav / reference.txt)
+                        + optional voice.yaml profile (name / reference / description)
 experiments/            model and prompt experiments (see notes.md in each)
 DEVELOPMENT.md          project plan, phases and evaluation criteria
 development.log         chronological log of what was done (install/config reference)
@@ -58,7 +66,10 @@ VERSION                 current version
 
 ## Status
 
-Phase 2 (voice cloning) works: the same 1.7B model generates plain speech and
-clones a reference speaker in ~5 s per sentence on an M1 Pro. Next phases:
-tone/expression control, more reference voices, voice profiles. See
-DEVELOPMENT.md for what is deliberately **not** built yet.
+Phases 2–6 are complete and committed: voice cloning (`--reference`),
+tone/expression control via prompt + whisper-timestamp trim, a repeatable
+naturalness evaluation set, and a three-voice set (Simone + the
+public-domain LibriVox readers Neufeld and Golding). Phase 7 adds named
+voice profiles (`--voice <name>` / `one_voice.py voices`). See
+DEVELOPMENT.md for what is deliberately **not** built yet; `development.log`
+records what was done and why.

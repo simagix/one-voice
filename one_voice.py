@@ -7,8 +7,15 @@ import sys
 import tempfile
 from pathlib import Path
 
-# VERSION file lives next to this script.
-_VERSION_FILE = Path(__file__).resolve().parent / "VERSION"
+try:
+    import yaml  # for voice profiles (voices/<name>/voice.yaml)
+except ImportError:  # pragma: no cover — degrade gracefully to the default layout
+    yaml = None
+
+# Files and directories live next to this script.
+_ROOT = Path(__file__).resolve().parent
+_VOICES_DIR = _ROOT / "voices"
+_VERSION_FILE = _ROOT / "VERSION"
 _PROJECT_NAME = "one-voice"
 
 # Qwen3-TTS 1.7B Base (MLX 8-bit): supports ICL voice cloning from
@@ -48,6 +55,52 @@ def _resolve_ref_text(ref_audio: Path, explicit: str | None) -> str | None:
         if text:
             return text
     return None
+
+
+def _available_voices() -> list[str]:
+    """Voice profile names = subdirectories of voices/ with a reference.wav."""
+    if not _VOICES_DIR.is_dir():
+        return []
+    return sorted(
+        d.name
+        for d in _VOICES_DIR.iterdir()
+        if d.is_dir() and (d / "reference.wav").exists()
+    )
+
+
+def _profile_reference(voice: str) -> Path:
+    """Reference WAV for a named voice profile (Phase 7, DEVELOPMENT.md §14).
+
+    Reads voices/<voice>/voice.yaml for the reference path, defaulting to
+    voices/<voice>/reference.wav when the profile is absent. Refuses unknown
+    voices with a helpful list of the available ones.
+    """
+    voice_dir = _VOICES_DIR / voice
+    if not (voice_dir / "reference.wav").exists():
+        avail = ", ".join(_available_voices()) or "(none)"
+        _fail(f"unknown voice profile: {voice!r} (available: {avail})")
+    ref_rel = "reference.wav"
+    yaml_path = voice_dir / "voice.yaml"
+    if yaml_path.exists() and yaml is not None:
+        try:
+            data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+        except yaml.YAMLError as exc:
+            _fail(f"cannot parse {yaml_path}: {exc}")
+        ref = (data or {}).get("reference")
+        if ref:
+            ref_rel = str(ref)
+    return voice_dir / ref_rel
+
+
+def _profile_description(voice: str) -> str:
+    yaml_path = _VOICES_DIR / voice / "voice.yaml"
+    if yaml_path.exists() and yaml is not None:
+        try:
+            data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+        except yaml.YAMLError:
+            return "—"
+        return (data or {}).get("description") or "—"
+    return "—"
 
 
 def _synthesize(
@@ -96,7 +149,15 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
 
 def cmd_clone(args: argparse.Namespace) -> None:
-    ref_audio = Path(args.reference)
+    has_voice, has_ref = bool(args.voice), bool(args.reference)
+    if has_voice == has_ref:
+        _fail(
+            "exactly one of --voice (named profile) or --reference (path) "
+            "is required"
+        )
+    ref_audio = (
+        _profile_reference(args.voice) if has_voice else Path(args.reference)
+    )
     ref_text = _resolve_ref_text(ref_audio, args.ref_text)
     if ref_text is None:
         print(
@@ -111,6 +172,17 @@ def cmd_clone(args: argparse.Namespace) -> None:
         ref_audio=ref_audio,
         ref_text=ref_text,
     )
+
+
+def cmd_voices(args: argparse.Namespace) -> None:
+    """List the available named voice profiles (voices/<name>/voice.yaml)."""
+    voices = _available_voices()
+    if not voices:
+        print("no voice profiles found in voices/", file=sys.stderr)
+        raise SystemExit(1)
+    print("available voice profiles:")
+    for voice in voices:
+        print(f"  {voice:<10} {_profile_description(voice)}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -138,7 +210,17 @@ def build_parser() -> argparse.ArgumentParser:
         "clone",
         help="generate speech using a cloned reference voice",
     )
-    p_clone.add_argument("--reference", required=True, help="reference WAV of the speaker to clone")
+    ref_group = p_clone.add_mutually_exclusive_group()
+    ref_group.add_argument(
+        "--reference",
+        metavar="WAV",
+        help="reference WAV path (mutually exclusive with --voice)",
+    )
+    ref_group.add_argument(
+        "--voice",
+        metavar="NAME",
+        help="named voice profile (see the 'voices' command)",
+    )
     p_clone.add_argument("--text", required=True, help="text to speak")
     p_clone.add_argument("--output", required=True, help="output WAV path")
     p_clone.add_argument(
@@ -148,6 +230,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_clone.add_argument("--model", default=DEFAULT_MODEL, help=f"model repo (default: {DEFAULT_MODEL})")
     p_clone.set_defaults(func=cmd_clone)
+
+    p_voices = sub.add_parser(
+        "voices",
+        help="list the available voice profiles (voices/<name>/voice.yaml)",
+    )
+    p_voices.set_defaults(func=cmd_voices)
 
     return parser
 
