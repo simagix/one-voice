@@ -45,17 +45,47 @@ python -m venv .venv
     --text "Thank you for calling." \
     --output output/simone.wav
 
+# Script support (Phase 8): each block generates an independent WAV.
+# Preview the plan without generating (rejects unknown voice/tone, malformed
+# blocks, empty text) — recommended, since generation is ~5–9 s per line:
+.venv/bin/python one_voice.py script \
+    --file examples/callcenter.txt --output-dir output/script_callcenter --dry-run
+
+# Generate: raw/ (untrimmed model output) + final/ (leak-trimmed) + manifest.json
+# (per line: voice, tone, text, prompt, files, duration, trim + transcript match)
+.venv/bin/python one_voice.py script \
+    --file examples/callcenter.txt --output-dir output/script_callcenter
+
 .venv/bin/python one_voice.py --version
 .venv/bin/python one_voice.py --help
 ```
 
-Both commands accept `--model` to override the default model
-(`mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit`).
+Both `generate`/`clone` and `script` accept `--model` to override the default
+model (`mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit`).
+
+### Script format
+
+```text
+# comments allowed
+[voice]                  # plain clone, no tone
+[voice | tone]           # tone: calm happy sad angry excited (validated tags)
+                         #       friendly professional reassuring sarcastic (NL directions)
+Spoken text, one or more lines (joined onto a single model input line).
+```
+
+Tone lines are generated with the prompt in-band on the same line as the text
+and the leaked prompt audio is trimmed automatically (whisper word-timestamp
+method, Phases 3–6). Every final clip is whisper-transcribed as an objective
+gate; `manifest.json` records each line for selective regeneration (Phase 9).
+`one_voice.py` is also import-safe — `parse_script` and the voice-profile
+helpers can be used as an embedded module from other Python code.
 
 ## Repository layout
 
 ```text
-one_voice.py            CLI entry point (generate / clone / voices / --version)
+one_voice.py            CLI entry point (generate / clone / script / voices / --version);
+                        import-safe for embedded use (parse_script, voice-profile helpers)
+examples/               example scripts for the `script` subcommand
 voices/<name>/          reference recordings + transcripts (reference.wav / reference.txt)
                         + optional voice.yaml profile (name / reference / description)
 experiments/            model and prompt experiments (see notes.md in each)
@@ -66,10 +96,12 @@ VERSION                 current version
 
 ## Status
 
-Phases 2–6 are complete and committed: voice cloning (`--reference`),
+Phases 2–7 are complete and committed: voice cloning (`--reference`),
 tone/expression control via prompt + whisper-timestamp trim, a repeatable
-naturalness evaluation set, and a three-voice set (Simone + the
-public-domain LibriVox readers Neufeld and Golding). Phase 7 adds named
-voice profiles (`--voice <name>` / `one_voice.py voices`). See
-DEVELOPMENT.md for what is deliberately **not** built yet; `development.log`
+naturalness evaluation set, a three-voice set (Simone + the public-domain
+LibriVox readers Neufeld and Golding), and named voice profiles
+(`--voice <name>` / `one_voice.py voices`). Phase 8 adds script support
+(`one_voice.py script`): per-line independent generation with optional tones,
+raw/final preservation and a manifest. See DEVELOPMENT.md for what is
+deliberately **not** built yet (audio assembly is Phase 9); `development.log`
 records what was done and why.
