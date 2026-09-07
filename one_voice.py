@@ -106,6 +106,27 @@ def _profile_description(voice: str) -> str:
     return "—"
 
 
+def resolve_default_voice(explicit: str | None = None) -> str:
+    """Return the default voice to use when a header omits it.
+
+    Priority:
+    1. ``explicit`` argument (caller-specified)
+    2. ``ONE_VOICE`` environment variable
+    3. First available voice alphabetically (fallback)
+    """
+    import os
+
+    if explicit:
+        return explicit
+    env_voice = os.environ.get("ONE_VOICE")
+    if env_voice:
+        return env_voice
+    available = _available_voices()
+    if available:
+        return available[0]
+    _fail("no voice profiles found — add one under voices/<name>/")
+
+
 # --------------------------------------------------------------------------
 # Phase 8 — script support (DEVELOPMENT.md §15)
 # --------------------------------------------------------------------------
@@ -208,7 +229,7 @@ def _parse_labeled_header(inner: str) -> tuple[str | None, str | None]:
     return voice, tone
 
 
-def parse_script(source: str) -> list[ScriptLine]:
+def parse_script(source: str, default_voice: str | None = None) -> list[ScriptLine]:
     """Parse the script format into ScriptLine objects.
 
     Supports two header formats:
@@ -223,9 +244,14 @@ def parse_script(source: str) -> list[ScriptLine]:
     newlines — Phase 3/4 lesson). `#` comment lines are ignored. Voice must
     be a known profile (see the 'voices' command); tone must be in TONES.
     Malformed input fails with a precise error naming the offending line.
+
+    ``default_voice`` specifies the voice to use when a header omits it
+    (e.g. ``[tone: friendly]`` or untagged text). When ``None``, the first
+    available voice is used. Use this to match deck-to-video's "default
+    profile" pattern.
     """
     lines: list[ScriptLine] = []
-    voice: str | None = None
+    voice: str | None = default_voice
     tone: str | None = None
     text_parts: list[str] = []
     header_lineno = 0
@@ -246,6 +272,9 @@ def parse_script(source: str) -> list[ScriptLine]:
         _fail("script is empty")
 
     known = _available_voices()
+    # Resolve default voice once at the start (for auto-fallback)
+    resolved_default = default_voice or resolve_default_voice()
+    voice = resolved_default
     for lineno, raw in enumerate(source.splitlines(), start=1):
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
@@ -267,6 +296,9 @@ def parse_script(source: str) -> list[ScriptLine]:
                     tone = new_tone
                 if voice is None and tone is None:
                     _fail(f"line {lineno}: neither voice nor tone specified in {stripped!r}")
+                # Apply default voice if header didn't specify one
+                if voice is None:
+                    voice = resolved_default
             else:
                 # Bare format: [voice | tone] or [voice]
                 name, sep, tone_part = inner.partition("|")
