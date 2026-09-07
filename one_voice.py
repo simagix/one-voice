@@ -4,6 +4,7 @@
 import argparse
 import difflib
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -17,7 +18,7 @@ except ImportError:  # pragma: no cover — degrade gracefully to the default la
 
 # Files and directories live next to this script.
 _ROOT = Path(__file__).resolve().parent
-_VOICES_DIR = _ROOT / "voices"
+_VOICES_DIR = Path(os.environ.get("ONE_VOICE_DIR", _ROOT / "voices"))
 _VERSION_FILE = _ROOT / "VERSION"
 _PROJECT_NAME = "one-voice"
 
