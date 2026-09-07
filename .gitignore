@@ -10,5 +10,8 @@ experiments/**/audio/
 # macOS
 .DS_Store
 
+# Local-only documentation log
+development.log
+
 # Model caches
 models/
