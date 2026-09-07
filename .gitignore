@@ -1,0 +1,14 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Generated audio
+output/
+experiments/**/audio/
+
+# macOS
+.DS_Store
+
+# Model caches
+models/
