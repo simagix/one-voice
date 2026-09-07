@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phase 5 — naturalness evaluation (listening)</title>
+<style>
+ body { font-family: -apple-system, sans-serif; max-width: 760px; margin: 2rem auto; }
+ h2 { border-bottom: 1px solid #ccc; padding-bottom: .2rem; margin-top: 2.5rem; }
+ .clip { margin: .8rem 0; }
+ .clip label { display: block; font-weight: 600; margin-bottom: .2rem; }
+ .promptnote { color: #888; font-weight: 400; font-size: .85rem; }
+ audio { width: 100%; }
+</style>
+</head>
+<body>
+<h1>Phase 5 — naturalness evaluation</h1>
+<p>Simone clone, default delivery. Plain clone generations except the three
+emotional lines (tag/NL prompt, leak-trimmed — Phase 4 pattern). Rate every
+clip 1–5 on <b>Naturalness</b> (headline dimension, §18); on the difficult
+text also note any <b>pronunciation</b> errors, and judge <b>Consistency</b>
+across the set. Transfer ratings into <code>notes.md</code>.</p>
+
+<h2>Normal conversation</h2>
+<div class="clip"><label>&ldquo;Thank you for calling.&rdquo;</label><audio controls preload="none" src="audio/trimmed/conv1.wav"></audio></div>
+<div class="clip"><label>&ldquo;How can I help you today?&rdquo;</label><audio controls preload="none" src="audio/trimmed/conv2.wav"></audio></div>
+<div class="clip"><label>&ldquo;Let me check that for you.&rdquo;</label><audio controls preload="none" src="audio/trimmed/conv3.wav"></audio></div>
+<h2>Questions</h2>
+<div class="clip"><label>&ldquo;Could you please confirm your account number?&rdquo;</label><audio controls preload="none" src="audio/trimmed/q1.wav"></audio></div>
+<div class="clip"><label>&ldquo;Would you like me to explain that again?&rdquo;</label><audio controls preload="none" src="audio/trimmed/q2.wav"></audio></div>
+<h2>Emotional speech</h2>
+<div class="clip"><label>&ldquo;I'm really sorry about what happened.&rdquo; <span class="promptnote">prompt: [sad] (trimmed)</span></label><audio controls preload="none" src="audio/trimmed/emo1_trim.wav"></audio></div>
+<div class="clip"><label>&ldquo;That's fantastic news!&rdquo; <span class="promptnote">prompt: [excited] (trimmed)</span></label><audio controls preload="none" src="audio/trimmed/emo2_trim.wav"></audio></div>
+<div class="clip"><label>&ldquo;I'm afraid we have a problem.&rdquo; <span class="promptnote">prompt: NL concern direction (trimmed)</span></label><audio controls preload="none" src="audio/trimmed/emo3_trim.wav"></audio></div>
+<h2>Difficult text</h2>
+<div class="clip"><label>&ldquo;Your appointment is on March 3rd at 2:30 PM, in room 401B of the Beaumont Clinic.&rdquo;</label><audio controls preload="none" src="audio/trimmed/diff1.wav"></audio></div>
+<div class="clip"><label>&ldquo;The total comes to $1,247.50, including the $19.99 monthly service fee.&rdquo;</label><audio controls preload="none" src="audio/trimmed/diff2.wav"></audio></div>
+<div class="clip"><label>&ldquo;The API returned a 503 error, so the VPN tunnel to the NAS dropped during the HTTP upload.&rdquo;</label><audio controls preload="none" src="audio/trimmed/diff3.wav"></audio></div>
+<div class="clip"><label>&ldquo;Mrs. O'Neill from 42 Hackney Blvd, Apt 7A, called about her Wi-Fi router, a Corvex XR-500.&rdquo;</label><audio controls preload="none" src="audio/trimmed/diff4.wav"></audio></div>
+<div class="clip"><label>&ldquo;Call 555-0142 between 9 AM and 5 PM EST and ask for Dr. Vásquez about the Q3 report.&rdquo;</label><audio controls preload="none" src="audio/trimmed/diff5.wav"></audio></div>
+<h2>Long sentences</h2>
+<div class="clip"><label>&ldquo;Before we can process the refund, I'll need to verify a few details on your account, so please bear with me for just a moment. Once everything checks out, the money should appear on your card within three to five business days.&rdquo;</label><audio controls preload="none" src="audio/trimmed/long1.wav"></audio></div>
+<div class="clip"><label>&ldquo;Thank you for your patience while I looked into this for you. I can see that the payment left your account on the twelfth, but our system never received the confirmation from the bank. I'll raise this with our payments team right now, and someone will call you back before the end of the day. In the meantime, please keep your reference number handy in case you need to contact us again.&rdquo;</label><audio controls preload="none" src="audio/trimmed/long2.wav"></audio></div>
+</body>
+</html>
