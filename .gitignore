@@ -3,6 +3,9 @@
 __pycache__/
 xdocs/
 *.pyc
+*.egg-info/
+build/
+dist/
 
 # Generated audio
 output/
