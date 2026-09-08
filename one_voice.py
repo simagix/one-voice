@@ -509,6 +509,24 @@ def _generate_line(
     return entry
 
 
+def trim_tone_leak(raw_wav: Path, target_text: str, out_wav: Path) -> None:
+    """Trim a leaked tone prompt from generated audio.
+
+    After generating ``<instruct> <target_text>``, the spoken instruct leaks
+    into the audio. This finds the cut point (whisper-timestamp method,
+    Phases 3–6) and writes the trimmed clip to ``out_wav``.
+    """
+    whisper_model, find_cut, normalize, trim_wav = _tone_helpers()
+    transcript = _transcribe(raw_wav)
+    if not transcript:
+        _fail(f"{raw_wav}: whisper produced no transcript; cannot trim tone leak")
+    words = transcript.get("words")
+    if not words:
+        _fail(f"{raw_wav}: whisper produced no word timestamps; cannot trim tone leak")
+    cut_s, match = find_cut(words, target_text)
+    trim_wav(raw_wav, cut_s, out_wav)
+
+
 def _parse_only(spec: str | None) -> list[int] | None:
     """Parse --only INDEX(,INDEX) into a sorted list of unique line indexes."""
     if spec is None:
