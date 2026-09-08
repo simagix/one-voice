@@ -11,6 +11,8 @@ import tempfile
 import wave
 from pathlib import Path
 
+import numpy as np
+
 try:
     import yaml  # for voice profiles (voices/<name>/voice.yaml)
 except ImportError:  # pragma: no cover — degrade gracefully to the default layout
@@ -405,28 +407,54 @@ def cmd_clone(args: argparse.Namespace) -> None:
 # Phase 8 — script generation (DEVELOPMENT.md §15)
 # --------------------------------------------------------------------------
 
-# Leak-trim helpers are imported from experiments/tone/trim_clips.py using
-# the sys.path pattern proven in Phase 6 (see development.log for the
-# same-named-module gotcha that forced unique filenames in the experiment
-# dirs; one_voice.py has no such clash).
-_TONE_HELPERS_DIR = _ROOT / "experiments" / "tone"
+# Trim helpers — inlined from experiments/tone/trim_clips.py so one-voice
+# works when installed via pip (experiments/ is not included in the package).
+_WHISPER_MODEL = "mlx-community/whisper-large-v3-turbo"
+_CUT_PAD_S = 0.05  # small back-off so the first phoneme is not clipped
 
 
-def _tone_helpers():
-    """Lazy import of the Phase 3 helpers: (WHISPER_MODEL, find_cut, normalize, trim_wav)."""
-    if str(_TONE_HELPERS_DIR) not in sys.path:
-        sys.path.insert(0, str(_TONE_HELPERS_DIR))
-    from trim_clips import WHISPER_MODEL, find_cut, normalize, trim_wav
+def normalize(s: str) -> str:
+    return " ".join("".join(c for c in s.lower() if c.isalnum() or c == " ").split())
 
-    return WHISPER_MODEL, find_cut, normalize, trim_wav
+
+def find_cut(words: list[dict], target: str) -> tuple[float, float]:
+    """Return (cut_time_s, match_ratio) for the boundary that best matches
+    the target sentence as the remaining transcript tail."""
+    norm_target = normalize(target)
+    words_norm = [normalize(w["word"]) for w in words]
+    best_time, best_ratio = 0.0, 0.0
+    for i in range(len(words)):
+        tail = " ".join(words_norm[i:])
+        ratio = difflib.SequenceMatcher(None, tail, norm_target).ratio()
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best_time = words[i]["start"]
+    return best_time, best_ratio
+
+
+def trim_wav(path: Path, cut_s: float, out_path: Path) -> float:
+    with wave.open(str(path)) as w:
+        sr = w.getframerate()
+        nch = w.getnchannels()
+        sw = w.getsampwidth()
+        assert sw == 2 and nch == 1
+        frames = w.readframes(w.getnframes())
+    x = np.frombuffer(frames, dtype=np.int16)
+    start = max(0, int((cut_s - _CUT_PAD_S) * sr))
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(out_path), "wb") as w:
+        w.setnchannels(nch)
+        w.setsampwidth(sw)
+        w.setframerate(sr)
+        w.writeframes(x[start:].tobytes())
+    return (len(x) - start) / sr
 
 
 def _transcribe(path: Path) -> str:
     """Whisper transcript of a clip — the objective pronunciation gate."""
     import mlx_whisper  # lazy: keeps --help / --dry-run fast
 
-    whisper_model, _, _, _ = _tone_helpers()
-    return mlx_whisper.transcribe(str(path), path_or_hf_repo=whisper_model)["text"].strip()
+    return mlx_whisper.transcribe(str(path), path_or_hf_repo=_WHISPER_MODEL)["text"].strip()
 
 
 def _duration_s(path: Path) -> float:
@@ -457,7 +485,6 @@ def _generate_line(
     text with the Phase 3 whisper-timestamp helpers. Plain lines are copied
     through unchanged (the Phase 4 baseline convention).
     """
-    whisper_model, find_cut, normalize, trim_wav = _tone_helpers()
     prompt = line.prompt
     raw_path = raw_dir / f"{line.stem}.wav"
     final_path = final_dir / f"{line.stem}.wav"
@@ -482,7 +509,7 @@ def _generate_line(
         import mlx_whisper  # lazy
 
         result = mlx_whisper.transcribe(
-            str(raw_path), path_or_hf_repo=whisper_model, word_timestamps=True
+            str(raw_path), path_or_hf_repo=_WHISPER_MODEL, word_timestamps=True
         )
         words = [w for seg in result["segments"] for w in seg.get("words", [])]
         if not words:
@@ -516,11 +543,12 @@ def trim_tone_leak(raw_wav: Path, target_text: str, out_wav: Path) -> None:
     into the audio. This finds the cut point (whisper-timestamp method,
     Phases 3–6) and writes the trimmed clip to ``out_wav``.
     """
-    whisper_model, find_cut, normalize, trim_wav = _tone_helpers()
-    transcript = _transcribe(raw_wav)
-    if not transcript:
-        _fail(f"{raw_wav}: whisper produced no transcript; cannot trim tone leak")
-    words = transcript.get("words")
+    import mlx_whisper  # lazy
+
+    result = mlx_whisper.transcribe(
+        str(raw_wav), path_or_hf_repo=_WHISPER_MODEL, word_timestamps=True
+    )
+    words = [w for seg in result["segments"] for w in seg.get("words", [])]
     if not words:
         _fail(f"{raw_wav}: whisper produced no word timestamps; cannot trim tone leak")
     cut_s, match = find_cut(words, target_text)
