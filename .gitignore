@@ -17,6 +17,9 @@ experiments/**/audio/
 # Local-only documentation log
 development.log
 
+# Local environment configuration (never commit; see .env.example)
+.env
+
 # Model caches
 models/
 
