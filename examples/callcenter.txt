@@ -2,16 +2,16 @@
 #
 # Format: blank-line-separated blocks. The first line of each block is the
 # header [voice] or [voice | tone]; the remaining lines are spoken text.
-# Voices: simone / neufeld / golding (see `one_voice.py voices`).
+# Voices: golding / neufeld (see `one_voice.py voices`).
 # Tones: calm happy sad angry excited (Phase 3/4-validated tags) or
 # friendly professional reassuring sarcastic (NL directions; the tag or
 # direction is trimmed out of the audio automatically).
 
-[simone | friendly]
+[golding | friendly]
 Thank you for calling.
 
-[simone | professional]
+[golding | professional]
 Let me look into that for you.
 
-[simone | reassuring]
+[golding | reassuring]
 I'll make sure we get this resolved.

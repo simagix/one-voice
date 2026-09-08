@@ -20,9 +20,42 @@ except ImportError:  # pragma: no cover — degrade gracefully to the default la
 
 # Files and directories live next to this script.
 _ROOT = Path(__file__).resolve().parent
-_VOICES_DIR = Path(os.environ.get("ONE_VOICE_DIR", _ROOT / "voices"))
 _VERSION_FILE = _ROOT / "VERSION"
 _PROJECT_NAME = "one-voice"
+
+
+def _voice_search_paths() -> list[Path]:
+    """Return ordered list of directories to search for voices.
+
+    Priority:
+    1. ``ONE_VOICE_PATH`` env var (colon-separated, like ``PATH``)
+    2. ``ONE_VOICE_DIR`` env var (single directory, backward compatible)
+    3. Default: one-voice's own ``voices/`` directory
+
+    Leftmost directory wins when the same voice name exists in multiple
+    locations — letting a consumer project override a voice without
+    touching the base install.
+    """
+    env_path = os.environ.get("ONE_VOICE_PATH")
+    if env_path:
+        return [Path(p) for p in env_path.split(os.pathsep) if p.strip()]
+    env_dir = os.environ.get("ONE_VOICE_DIR")
+    if env_dir:
+        return [Path(env_dir)]
+    return [_ROOT / "voices"]
+
+
+def _resolve_voice_dir(voice: str) -> Path | None:
+    """Find which directory contains this voice profile.
+
+    Returns the first match from the search path, or None if not found
+    in any location.
+    """
+    for search_dir in _voice_search_paths():
+        voice_dir = search_dir / voice
+        if voice_dir.is_dir() and (voice_dir / "reference.wav").exists():
+            return voice_dir
+    return None
 
 # Qwen3-TTS 1.7B Base (MLX 8-bit): supports ICL voice cloning from
 # ref_audio + ref_text. Override with --model.
@@ -64,25 +97,30 @@ def _resolve_ref_text(ref_audio: Path, explicit: str | None) -> str | None:
 
 
 def _available_voices() -> list[str]:
-    """Voice profile names = subdirectories of voices/ with a reference.wav."""
-    if not _VOICES_DIR.is_dir():
-        return []
-    return sorted(
-        d.name
-        for d in _VOICES_DIR.iterdir()
-        if d.is_dir() and (d / "reference.wav").exists()
-    )
+    """Voice profile names = subdirectories with a reference.wav.
+
+    Scans all directories in the voice search path, deduplicating by name
+    (leftmost directory wins).
+    """
+    seen: dict[str, None] = {}
+    for search_dir in _voice_search_paths():
+        if not search_dir.is_dir():
+            continue
+        for d in sorted(search_dir.iterdir()):
+            if d.is_dir() and (d / "reference.wav").exists() and d.name not in seen:
+                seen[d.name] = None
+    return sorted(seen)
 
 
 def _profile_reference(voice: str) -> Path:
     """Reference WAV for a named voice profile (Phase 7, DEVELOPMENT.md §14).
 
-    Reads voices/<voice>/voice.yaml for the reference path, defaulting to
-    voices/<voice>/reference.wav when the profile is absent. Refuses unknown
-    voices with a helpful list of the available ones.
+    Searches the voice search path for the profile, reads voice.yaml for the
+    reference path, defaulting to reference.wav when the profile is absent.
+    Refuses unknown voices with a helpful list of the available ones.
     """
-    voice_dir = _VOICES_DIR / voice
-    if not (voice_dir / "reference.wav").exists():
+    voice_dir = _resolve_voice_dir(voice)
+    if voice_dir is None:
         avail = ", ".join(_available_voices()) or "(none)"
         _fail(f"unknown voice profile: {voice!r} (available: {avail})")
     ref_rel = "reference.wav"
@@ -99,7 +137,10 @@ def _profile_reference(voice: str) -> Path:
 
 
 def _profile_description(voice: str) -> str:
-    yaml_path = _VOICES_DIR / voice / "voice.yaml"
+    voice_dir = _resolve_voice_dir(voice)
+    if voice_dir is None:
+        return "—"
+    yaml_path = voice_dir / "voice.yaml"
     if yaml_path.exists() and yaml is not None:
         try:
             data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
@@ -183,8 +224,8 @@ TONES: dict[str, str] = {
 class ScriptLine:
     """One parsed script line: a [voice | tone] block plus its spoken text.
 
-    Supports both bare (``[simone | friendly]``) and labeled
-    (``[voice: simone | tone: friendly]``) header formats so existing
+    Supports both bare (``[golding | friendly]``) and labeled
+    (``[voice: golding | tone: friendly]``) header formats so existing
     deck-to-video speaker notes work unchanged.
     """
 
@@ -217,7 +258,7 @@ def _parse_labeled_header(inner: str) -> tuple[str | None, str | None]:
     """Parse a labeled header: ``voice: NAME | tone: TAG``, ``voice: NAME``, or ``tone: TAG``.
 
     Returns ``(voice, tone)`` where either may be None if not specified.
-    Used for deck-to-video compatibility (``[voice: simone | tone: friendly]``).
+    Used for deck-to-video compatibility (``[voice: golding | tone: friendly]``).
     """
     voice: str | None = None
     tone: str | None = None

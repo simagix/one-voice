@@ -34,16 +34,16 @@ python -m venv .venv
 # Voice cloning from a named profile (voices/<name>/voice.yaml — Phase 7)
 .venv/bin/python one_voice.py voices                # list available profiles
 .venv/bin/python one_voice.py clone \
-    --voice simone \
+    --voice golding \
     --text "Thank you for calling." \
-    --output output/simone.wav
+    --output output/golding.wav
 
 # ...or from an arbitrary reference WAV path (Phase 2 behaviour)
 # (transcript is read from <reference>.txt sidecar; override with --ref-text)
 .venv/bin/python one_voice.py clone \
-    --reference voices/simone/reference.wav \
+    --reference voices/golding/reference.wav \
     --text "Thank you for calling." \
-    --output output/simone.wav
+    --output output/golding.wav
 
 # Script support (Phase 8): each block generates an independent WAV.
 # Preview the plan without generating (rejects unknown voice/tone, malformed
@@ -73,7 +73,7 @@ python -m venv .venv
     --manifest output/script_callcenter/manifest.json \
     --output output/script_callcenter/assembled.wav
 
-# A multi-voice demo (three voices in one dialogue):
+# A multi-voice demo (two voices in one dialogue):
 .venv/bin/python one_voice.py script \
     --file examples/dialogue.txt --output-dir output/dialogue_demo
 .venv/bin/python one_voice.py assemble \
@@ -127,8 +127,8 @@ VERSION                 current version
 
 Phases 2–8 are complete and committed: voice cloning (`--reference`),
 tone/expression control via prompt + whisper-timestamp trim, a repeatable
-naturalness evaluation set, a three-voice set (Simone + the public-domain
-LibriVox readers Neufeld and Golding), named voice profiles
+naturalness evaluation set, a two-voice set (the public-domain LibriVox
+readers Neufeld and Golding), named voice profiles
 (`--voice <name>` / `one_voice.py voices`), and script support
 (`one_voice.py script`): per-line independent generation with optional tones,
 raw/final preservation and a manifest. Phase 9 adds audio assembly
