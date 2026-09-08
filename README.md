@@ -5,6 +5,8 @@ Experimental local text-to-speech on Apple Silicon using
 [MLX](https://github.com/ml-explore/mlx), with voice cloning from a short
 reference recording — usable as a CLI and as an importable Python library.
 
+![OneVoice Workflow Diagram](workflow_diagram.jpeg)
+
 The goal: natural, consistent, customer-quality voices where **who** is
 speaking (voice), **how** they speak (tone), and **what** they say (text)
 are controlled independently.
