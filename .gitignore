@@ -1,6 +1,7 @@
 # Python
 .venv/
 __pycache__/
+xdocs/
 *.pyc
 
 # Generated audio
@@ -21,5 +22,3 @@ jekyll_neufeld_part1.mp3
 sherlock_golding_part1.mp3
 neufeld.wav
 golding.wav
-PHASE8.md
-PHASE9.md
